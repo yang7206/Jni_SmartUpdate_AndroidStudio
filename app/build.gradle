@@ -1,13 +1,10 @@
 import org.apache.tools.ant.taskdefs.condition.Os
-
 import java.lang.reflect.Field
-
 apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 23
     buildToolsVersion "23.0.2"
-
     defaultConfig {
         applicationId "com.example.jnidemo"
         minSdkVersion 9
@@ -18,42 +15,50 @@ android {
         }
     }
 
+    //关闭AndroidStudio的ndk编译，
+    //如果不加这行，AndroidStudio会自行去编译src/main/jni下面的的c/c++文件
+    //AndroidStudio自行编译的逻辑是把jni下面下的所以文件全部打包，如果我们需要先构建动态链接库，则这种方式不适合我们，需要我们自行编译
     sourceSets.main.jni.srcDirs = []
-
+    //构建一个task任务
     task ndkBuild(type: Exec, description: 'Compile JNI source via NDK') {
+        //打印系统名称
         Field f = Os.getDeclaredField("OS_NAME");
         f.setAccessible(true)
         println("OS name :"+f.get(Os))
+        //build.gradle文件在windows下面 必须使用ndk-build.cmd文件，使用ndk-build会报错，具体原因未知
         if (Os.isFamily(Os.FAMILY_WINDOWS)){
             println(Os.FAMILY_WINDOWS);
+            //调用命令行
+            //第一个参数是生成路径
+            //第二个参数是so文件的输出路径
+            //第三个参数是根据自行编写Android.mk文件进行编译
+            //第四个参数是根据自行编写Application.mk文件进行不同平台的编译
             commandLine "ndk-build.cmd",
                     'NDK_PROJECT_PATH=build/intermediates/ndk',
                     'NDK_LIBS_OUT=src/main/jniLibs',
                     'APP_BUILD_SCRIPT=src/main/jni/Android.mk',
                     'NDK_APPLICATION_MK=src/main/jni/Application.mk'
         }else{
+            //其他平台 ：调用命令行
             commandLine "ndk-build",
                     'NDK_PROJECT_PATH=build/intermediates/ndk',
                     'NDK_LIBS_OUT=src/main/jniLibs',
                     'APP_BUILD_SCRIPT=src/main/jni/Android.mk',
                     'NDK_APPLICATION_MK=src/main/jni/Application.mk'
         }
-
     }
-
+    //调用任务
     tasks.withType(JavaCompile) {
         compileTask -> compileTask.dependsOn ndkBuild
     }
-
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
         }
     }
-
-
 }
+
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile 'com.android.support:support-v4:23.0.0'
