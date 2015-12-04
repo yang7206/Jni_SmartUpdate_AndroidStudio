@@ -1,0 +1,2 @@
+# Jni_SmartUpdate_AndroidStudio
+Jni_SmartUpdate_AndroidStudio
